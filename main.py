@@ -1,3 +1,4 @@
+import os
 import sys
 from load_data import Data
 import numpy as np
@@ -28,7 +29,11 @@ class Experiment:
         if log_file is None:
             self.fd = sys.stdout
         else:
-            self.fd = open(log_file, 'a')
+            if not os.path.exists(log_file):
+                self.fd = open(log_file, 'w')
+            else:
+                print("Error, please clean log file before proceeding!!!")
+                exit()
 
     def __del__(self):
         self.fd.close()
