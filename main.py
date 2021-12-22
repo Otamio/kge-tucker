@@ -36,7 +36,10 @@ class Experiment:
                 exit()
 
     def __del__(self):
-        self.fd.close()
+        try:
+            self.fd.close()
+        except AttributeError:
+            pass
 
 
     def get_data_idxs(self, data):
