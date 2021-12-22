@@ -154,9 +154,9 @@ class Experiment:
             self.fd.write(f"\tLoss: {np.mean(losses)}\n")
             model.eval()
             with torch.no_grad():
-                self.fd.write("Validation:\n")
-                self.evaluate(model, d.valid_data)
                 if not it % 2:
+                    self.fd.write("Validation:\n")
+                    self.evaluate(model, d.valid_data)
                     self.fd.write("Test:\n")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
