@@ -156,6 +156,7 @@ class Experiment:
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
                     self.fd.write(f"\tTest time: {time.time() - start_test}")
+            self.fd.flush()  # Update Result every epoch
 
 
 if __name__ == '__main__':
