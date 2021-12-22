@@ -1,3 +1,4 @@
+import sys
 from load_data import Data
 import numpy as np
 import torch
@@ -13,7 +14,7 @@ class Experiment:
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200,
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False,
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 label_smoothing=0.):
+                 label_smoothing=0., log_file=None):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -24,9 +25,17 @@ class Experiment:
         self.cuda = cuda
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
                        "hidden_dropout2": hidden_dropout2}
+        if log_file is None:
+            self.fd = sys.stdout
+        else:
+            self.fd = open(log_file, 'a')
+
+    def __del__(self):
+        self.fd.close()
+
 
     def get_data_idxs(self, data):
-        data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]], \
+        data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]],
                       self.entity_idxs[data[i][2]]) for i in range(len(data))]
         return data_idxs
 
@@ -55,7 +64,7 @@ class Experiment:
         test_data_idxs = self.get_data_idxs(data)
         er_vocab = self.get_er_vocab(self.get_data_idxs(d.data))
 
-        print("Number of data points: %d" % len(test_data_idxs))
+        self.fd.write("\tNumber of data points: %d\n" % len(test_data_idxs))
 
         for i in range(0, len(test_data_idxs), self.batch_size):
             data_batch, _ = self.get_batch(er_vocab, test_data_idxs, i)
@@ -87,19 +96,19 @@ class Experiment:
                     else:
                         hits[hits_level].append(0.0)
 
-        print('Hits @10: {0}'.format(np.mean(hits[9])))
-        print('Hits @3: {0}'.format(np.mean(hits[2])))
-        print('Hits @1: {0}'.format(np.mean(hits[0])))
-        print('Mean rank: {0}'.format(np.mean(ranks)))
-        print('Mean reciprocal rank: {0}'.format(np.mean(1. / np.array(ranks))))
+        self.fd.write('\tHits @10: {0}\n'.format(np.mean(hits[9])))
+        self.fd.write('\tHits @3: {0}\n'.format(np.mean(hits[2])))
+        self.fd.write('\tHits @1: {0}\n'.format(np.mean(hits[0])))
+        self.fd.write('\tMean rank: {0}\n'.format(np.mean(ranks)))
+        self.fd.write('\tMean reciprocal rank: {0}\n'.format(np.mean(1. / np.array(ranks))))
 
     def train_and_eval(self):
-        print("Training the TuckER model...")
+        self.fd.write("Training the TuckER model...\n")
         self.entity_idxs = {d.entities[i]: i for i in range(len(d.entities))}
         self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
 
         train_data_idxs = self.get_data_idxs(d.train_data)
-        print("Number of training data points: %d" % len(train_data_idxs))
+        self.fd.write("Number of training data points: %d\n" % len(train_data_idxs))
 
         model = TuckER(d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
         if self.cuda:
@@ -112,7 +121,7 @@ class Experiment:
         er_vocab = self.get_er_vocab(train_data_idxs)
         er_vocab_pairs = list(er_vocab.keys())
 
-        print("Starting training...")
+        self.fd.write("Starting training...\n")
         for it in range(1, self.num_iterations + 1):
             start_train = time.time()
             model.train()
@@ -135,24 +144,24 @@ class Experiment:
                 losses.append(loss.item())
             if self.decay_rate:
                 scheduler.step()
-            print(it)
-            print(time.time() - start_train)
-            print(np.mean(losses))
+            self.fd.write(f"Iteration: {it}\n")
+            self.fd.write(f"\tTime elapsed: {time.time() - start_train}\n")
+            self.fd.write(f"\tLoss: {np.mean(losses)}\n")
             model.eval()
             with torch.no_grad():
-                print("Validation:")
+                self.fd.write("Validation:\n")
                 self.evaluate(model, d.valid_data)
                 if not it % 2:
-                    print("Test:")
+                    self.fd.write("Test:\n")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
-                    print(time.time() - start_test)
+                    self.fd.write(f"\tTest time: {time.time() - start_test}")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="FB15k-237", nargs="?",
-                        help="Which dataset to use: FB15k, FB15k-237, WN18 or WN18RR.")
+    parser.add_argument("--dataset", type=str, default="fb15k237", nargs="?",
+                        help="Which dataset to use: fb15k, fb15k237, wn18 or wn18rr.")
     parser.add_argument("--num_iterations", type=int, default=500, nargs="?",
                         help="Number of iterations.")
     parser.add_argument("--batch_size", type=int, default=128, nargs="?",
@@ -175,6 +184,8 @@ if __name__ == '__main__':
                         help="Dropout after the second hidden layer.")
     parser.add_argument("--label_smoothing", type=float, default=0.1, nargs="?",
                         help="Amount of label smoothing.")
+    parser.add_argument("--log_file", type=str, default=None, nargs="?",
+                        help="Path of the log file.")
 
     args = parser.parse_args()
     dataset = args.dataset
@@ -189,5 +200,6 @@ if __name__ == '__main__':
     experiment = Experiment(num_iterations=args.num_iterations, batch_size=args.batch_size, learning_rate=args.lr,
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
-                            hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing)
+                            hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing,
+                            log_file=args.log_file)
     experiment.train_and_eval()
