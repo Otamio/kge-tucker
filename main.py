@@ -1,8 +1,5 @@
-import os
-import sys
 from load_data import Data
-import numpy as np
-import torch
+import logging
 import time
 from collections import defaultdict
 from model import *
@@ -10,12 +7,17 @@ from torch.optim.lr_scheduler import ExponentialLR
 import argparse
 
 
+model_mapping = {
+    "tucker": TuckER
+}
+
+
 class Experiment:
 
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200,
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False,
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 label_smoothing=0., log_file=None):
+                 label_smoothing=0., log_file=None, model='tucker'):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -27,20 +29,21 @@ class Experiment:
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
                        "hidden_dropout2": hidden_dropout2}
         if log_file is None:
-            self.fd = sys.stdout
-        else:
-            if not os.path.exists(log_file):
-                self.fd = open(log_file, 'w')
-            else:
-                print("Error, please clean log file before proceeding!!!")
-                exit()
+            log_file = f"out/{dataset}_{model}.log"
 
-    def __del__(self):
-        try:
-            self.fd.close()
-        except AttributeError:
-            pass
-
+        # Set up log file
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-8s %(message)s',
+            level=logging.INFO,
+            datefmt='%Y-%m-%d %H:%M:%S',
+            filename=log_file,
+            filemode='w'
+        )
+        console = logging.StreamHandler()
+        console.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+        console.setFormatter(formatter)
+        logging.getLogger('').addHandler(console)
 
     def get_data_idxs(self, data):
         data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]],
@@ -72,7 +75,7 @@ class Experiment:
         test_data_idxs = self.get_data_idxs(data)
         er_vocab = self.get_er_vocab(self.get_data_idxs(d.data))
 
-        self.fd.write("\tNumber of data points: %d\n" % len(test_data_idxs))
+        logging.info("Number of data points: %d\n" % len(test_data_idxs))
 
         for i in range(0, len(test_data_idxs), self.batch_size):
             data_batch, _ = self.get_batch(er_vocab, test_data_idxs, i)
@@ -104,21 +107,21 @@ class Experiment:
                     else:
                         hits[hits_level].append(0.0)
 
-        self.fd.write('\tHits @10: {0}\n'.format(np.mean(hits[9])))
-        self.fd.write('\tHits @3: {0}\n'.format(np.mean(hits[2])))
-        self.fd.write('\tHits @1: {0}\n'.format(np.mean(hits[0])))
-        self.fd.write('\tMean rank: {0}\n'.format(np.mean(ranks)))
-        self.fd.write('\tMean reciprocal rank: {0}\n'.format(np.mean(1. / np.array(ranks))))
+        logging.info('Hits @10: {0}\n'.format(np.mean(hits[9])))
+        logging.info('Hits @3: {0}\n'.format(np.mean(hits[2])))
+        logging.info('Hits @1: {0}\n'.format(np.mean(hits[0])))
+        logging.info('Mean rank: {0}\n'.format(np.mean(ranks)))
+        logging.info('Mean reciprocal rank: {0}\n'.format(np.mean(1. / np.array(ranks))))
 
-    def train_and_eval(self):
-        self.fd.write("Training the TuckER model...\n")
+    def train_and_eval(self, model="tucker"):
+        logging.info(f"Training the {model} model...\n")
         self.entity_idxs = {d.entities[i]: i for i in range(len(d.entities))}
         self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
 
         train_data_idxs = self.get_data_idxs(d.train_data)
-        self.fd.write("Number of training data points: %d\n" % len(train_data_idxs))
+        logging.info("Number of training data points: %d\n" % len(train_data_idxs))
 
-        model = TuckER(d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
+        model = model_mapping[model](d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
         if self.cuda:
             model.cuda()
         model.init()
@@ -129,7 +132,7 @@ class Experiment:
         er_vocab = self.get_er_vocab(train_data_idxs)
         er_vocab_pairs = list(er_vocab.keys())
 
-        self.fd.write("Starting training...\n")
+        logging.info("Starting training...\n")
         for it in range(1, self.num_iterations + 1):
             start_train = time.time()
             model.train()
@@ -152,25 +155,27 @@ class Experiment:
                 losses.append(loss.item())
             if self.decay_rate:
                 scheduler.step()
-            self.fd.write(f"Iteration: {it}\n")
-            self.fd.write(f"\tTime elapsed: {time.time() - start_train}\n")
-            self.fd.write(f"\tLoss: {np.mean(losses)}\n")
+            logging.info(f"Step at {it}\n")
+            logging.info(f"Training Time elapsed: {time.time() - start_train}\n")
+            logging.info(f"Training Loss: {np.mean(losses)}\n")
+
             model.eval()
             with torch.no_grad():
-                if not it % 2:
-                    self.fd.write("Validation:\n")
+                if not it % 10:
+                    logging.info(f"Validation at step {it}\n")
                     self.evaluate(model, d.valid_data)
-                    self.fd.write("Test:\n")
+                    logging.info(f"Test at step {it}\n")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
-                    self.fd.write(f"\tTest time: {time.time() - start_test}\n")
-            self.fd.flush()  # Update Result every epoch
+                    logging.info(f"\tTest Evaluation Time: {time.time() - start_test}\n")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="fb15k237", nargs="?",
                         help="Which dataset to use: fb15k, fb15k237, wn18 or wn18rr.")
+    parser.add_argument("--model", type=str, default="tucker", nargs="?",
+                        help="Which model to use?")
     parser.add_argument("--num_iterations", type=int, default=500, nargs="?",
                         help="Number of iterations.")
     parser.add_argument("--batch_size", type=int, default=128, nargs="?",
@@ -210,5 +215,5 @@ if __name__ == '__main__':
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
                             hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing,
-                            log_file=args.log_file)
+                            log_file=args.log_file, model=args.model)
     experiment.train_and_eval()

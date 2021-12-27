@@ -56,7 +56,7 @@ def main():
             result[-1] = EpocResult(epoc, result[-1], convert_result(cache))
         results[fname.split('/')[1].split('.')[0].strip()] = result
 
-    for exp, res in results.items():
+    for exp, res in sorted(results.items()):
         best = max(res)
         print(exp, best.epoc, '\t', best.test.mrr, '\t', best.test.hits_1, '\t', best.test.hits_10)
 
