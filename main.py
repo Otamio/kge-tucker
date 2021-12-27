@@ -9,7 +9,8 @@ import argparse
 
 model_mapping = {
     "tucker": TuckER,
-    "tucker_literal": TuckER_Literal
+    "tucker_literal": TuckER_Literal,
+    "tucker_kbln": TuckER_KBLN
 }
 
 

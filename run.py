@@ -18,7 +18,7 @@ if __name__ == "__main__":
     gpu = args.gpu
     options = args.options
 
-    if model in set(["tucker", "tucker_literal"]):
+    if model in set(["tucker", "tucker_literal", "tucker_kbln"]):
         if dataset == "fb15k237":
             command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                        "--num_iterations 500 --batch_size 128 --lr 0.0005 --dr 1.0 --edim 200 --rdim 200 " \
