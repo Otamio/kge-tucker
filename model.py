@@ -281,7 +281,7 @@ class DistMult(torch.nn.Module):
 
 class DistMult_LiteralE(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
-        super(DistMult, self).__init__()
+        super(DistMult_LiteralE, self).__init__()
 
         assert(d1 == d2)
 
