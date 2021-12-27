@@ -18,7 +18,7 @@ class Experiment:
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200,
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False,
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 label_smoothing=0., log_file=None, model='tucker', dataset='fb15k237'):
+                 label_smoothing=0.):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -27,10 +27,11 @@ class Experiment:
         self.decay_rate = decay_rate
         self.label_smoothing = label_smoothing
         self.cuda = cuda
+        self.entity_idxs = {d.entities[i]: i for i in range(len(d.entities))}
+        self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
-                       "hidden_dropout2": hidden_dropout2, "dataset": dataset}
-        if log_file is None:
-            log_file = f"out/{dataset}_{model}.log"
+                       "hidden_dropout2": hidden_dropout2, "dataset": dataset,
+                       "ent2idx": self.entity_idxs, "rel2idx": self.relation_idxs}
 
         # Set up log file
         logging.basicConfig(
@@ -116,8 +117,6 @@ class Experiment:
 
     def train_and_eval(self, model="tucker"):
         logging.info(f"Training the {model} model...")
-        self.entity_idxs = {d.entities[i]: i for i in range(len(d.entities))}
-        self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
 
         train_data_idxs = self.get_data_idxs(d.train_data)
         logging.info("Number of training data points: %d" % len(train_data_idxs))
@@ -199,11 +198,11 @@ if __name__ == '__main__':
                         help="Dropout after the second hidden layer.")
     parser.add_argument("--label_smoothing", type=float, default=0.1, nargs="?",
                         help="Amount of label smoothing.")
-    parser.add_argument("--log_file", type=str, default=None, nargs="?",
-                        help="Path of the log file.")
 
     args = parser.parse_args()
     dataset = args.dataset
+    model = args.model
+    log_file = f"out/{dataset}_{model}.log"
     data_dir = "data/%s/" % dataset
     torch.backends.cudnn.deterministic = True
     seed = 20
@@ -216,5 +215,5 @@ if __name__ == '__main__':
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
                             hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing,
-                            log_file=args.log_file, model=args.model, dataset=args.dataset)
+                            log_file=args.log_file)
     experiment.train_and_eval()
