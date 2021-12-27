@@ -4,6 +4,19 @@ import torch
 from torch.nn.init import xavier_normal_
 
 
+def load_num_lit(ent2idx, rel2idx, dataset):
+    df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
+    numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
+    for i, (s, p, lit) in enumerate(df.values):
+        try:
+            numerical_literals[ent2idx[s.lower()], rel2idx[p]] = lit
+        except KeyError:
+            continue
+    max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
+    numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
+    return torch.autograd.Variable(torch.from_numpy(numerical_literals))
+
+
 class Gate(torch.nn.Module):
 
     def __init__(self,
@@ -95,22 +108,9 @@ class TuckER_Literal(torch.nn.Module):
         rel2idx = kwargs["rel2idx"]
 
         # Literal
-        self.numerical_literals = self.load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals = load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
-
-    @staticmethod
-    def load_num_lit(ent2idx, rel2idx, dataset):
-        df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
-        numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
-        for i, (s, p, lit) in enumerate(df.values):
-            try:
-                numerical_literals[ent2idx[s.lower()], rel2idx[p]] = lit
-            except KeyError:
-                continue
-        max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
-        numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
-        return torch.autograd.Variable(torch.from_numpy(numerical_literals))
 
     def to_cuda(self):
         self.numerical_literals = self.numerical_literals.cuda()
@@ -277,6 +277,49 @@ class DistMult(torch.nn.Module):
         r = self.input_dropout(self.R(r_idx).squeeze())
 
         return torch.sigmoid(torch.mm(e1*r, self.E.weight.transpose(1, 0)))
+
+
+class DistMult_LiteralE(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(DistMult, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        # Track mapping
+        ent2idx = kwargs["ent2idx"]
+        rel2idx = kwargs["rel2idx"]
+
+        # Literal
+        self.numerical_literals = load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.emb_num_lit = self.emb_num_lit.cuda()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def forward(self, e1_idx, r_idx):
+        e1 = self.E(e1_idx).squeeze()
+        r = self.R(r_idx).squeeze()
+
+        # Begin literals
+        e1_lit = self.numerical_literals[e1_idx.view(-1)]
+        e1 = self.emb_num_lit(e1, e1_lit)
+        e2 = self.emb_num_lit(self.E.weight, self.numerical_literals)
+        # End literals
+
+        e1 = self.input_dropout(e1)
+        r = self.input_dropout(r)
+        return torch.sigmoid(torch.mm(e1*r, e2.transpose(1, 0)))
 
 
 class ConvE(torch.nn.Module):
