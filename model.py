@@ -276,7 +276,7 @@ class DistMult(torch.nn.Module):
         e1 = self.input_dropout(self.E(e1_idx).squeeze())
         r = self.input_dropout(self.R(r_idx).squeeze())
 
-        return torch.sigmoid(torch.mm(e1*r, self.E.transpose(1, 0)))
+        return torch.sigmoid(torch.mm(e1*r, self.E.weight.transpose(1, 0)))
 
 
 class ConvE(torch.nn.Module):
