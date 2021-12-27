@@ -18,7 +18,7 @@ if __name__ == "__main__":
     gpu = args.gpu
     options = args.options
 
-    if model == "tucker":
+    if model in set(["tucker", "tucker_literal"]):
         if dataset == "fb15k237":
             command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                        "--num_iterations 500 --batch_size 128 --lr 0.0005 --dr 1.0 --edim 200 --rdim 200 " \
@@ -27,7 +27,6 @@ if __name__ == "__main__":
             command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                        "--num_iterations 500 --batch_size 128 --lr 0.003 --dr 0.99 --edim 200 --rdim 200 " \
                        "--input_dropout 0.2 --hidden_dropout1 0.2 --hidden_dropout2 0.3 --label_smoothing 0.0"
-
     else:
         print(model, "is not supported")
         exit()

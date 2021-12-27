@@ -8,7 +8,8 @@ import argparse
 
 
 model_mapping = {
-    "tucker": TuckER
+    "tucker": TuckER,
+    "tucker_literal": TuckER_Literal
 }
 
 
@@ -17,7 +18,7 @@ class Experiment:
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200,
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False,
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 label_smoothing=0., log_file=None, model='tucker'):
+                 label_smoothing=0., log_file=None, model='tucker', dataset='fb15k237'):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -27,7 +28,7 @@ class Experiment:
         self.label_smoothing = label_smoothing
         self.cuda = cuda
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
-                       "hidden_dropout2": hidden_dropout2}
+                       "hidden_dropout2": hidden_dropout2, "dataset": dataset}
         if log_file is None:
             log_file = f"out/{dataset}_{model}.log"
 
@@ -215,5 +216,5 @@ if __name__ == '__main__':
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
                             hidden_dropout2=args.hidden_dropout2, label_smoothing=args.label_smoothing,
-                            log_file=args.log_file, model=args.model)
+                            log_file=args.log_file, model=args.model, dataset=args.dataset)
     experiment.train_and_eval()
