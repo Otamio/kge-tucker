@@ -50,6 +50,9 @@ class TuckER(torch.nn.Module):
         xavier_normal_(self.E.weight.data)
         xavier_normal_(self.R.weight.data)
 
+    def to_cuda(self):
+        pass
+
     def forward(self, e1_idx, r_idx):
         e1 = self.E(e1_idx)
         x = self.bn0(e1)
@@ -108,6 +111,10 @@ class TuckER_Literal(torch.nn.Module):
         max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
         numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
         return torch.autograd.Variable(torch.from_numpy(numerical_literals))
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.emb_num_lit = self.emb_num_lit.cuda()
 
     def init(self):
         xavier_normal_(self.E.weight.data)
@@ -195,6 +202,11 @@ class TuckER_KBLN(torch.nn.Module):
         return torch.autograd.Variable(torch.from_numpy(numerical_literals)), \
                torch.autograd.Variable(torch.FloatTensor(c)), \
                torch.autograd.Variable(torch.FloatTensor(var))
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.c = self.c.cuda()
+        self.var = self.var.cuda()
 
     def init(self):
         xavier_normal_(self.E.weight.data)

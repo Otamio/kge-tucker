@@ -128,6 +128,7 @@ class Experiment:
         model = model_mapping[model](d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
         if self.cuda:
             model.cuda()
+            model.to_cuda()
         model.init()
         opt = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
         if self.decay_rate:
