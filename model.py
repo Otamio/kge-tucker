@@ -4,6 +4,31 @@ import torch
 from torch.nn.init import xavier_normal_
 
 
+class Gate(torch.nn.Module):
+
+    def __init__(self,
+                 input_size,
+                 output_size,
+                 gate_activation=torch.sigmoid):
+
+        super(Gate, self).__init__()
+        self.output_size = output_size
+
+        self.gate_activation = gate_activation
+        self.g = torch.nn.Linear(input_size, output_size)
+        self.g1 = torch.nn.Linear(output_size, output_size, bias=False)
+        self.g2 = torch.nn.Linear(input_size-output_size, output_size, bias=False)
+        self.gate_bias = torch.nn.Parameter(torch.zeros(output_size))
+
+    def forward(self, x_ent, x_lit):
+        x = torch.cat([x_ent, x_lit], 1)
+        g_embedded = torch.tanh(self.g(x))
+        gate = self.gate_activation(self.g1(x_ent) + self.g2(x_lit) + self.gate_bias)
+        output = (1-gate) * x_ent + gate * g_embedded
+
+        return output
+
+
 class TuckER(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
         super(TuckER, self).__init__()
@@ -43,31 +68,6 @@ class TuckER(torch.nn.Module):
         x = torch.mm(x, self.E.weight.transpose(1, 0))
         pred = torch.sigmoid(x)
         return pred
-
-
-class Gate(torch.nn.Module):
-
-    def __init__(self,
-                 input_size,
-                 output_size,
-                 gate_activation=torch.sigmoid):
-
-        super(Gate, self).__init__()
-        self.output_size = output_size
-
-        self.gate_activation = gate_activation
-        self.g = torch.nn.Linear(input_size, output_size)
-        self.g1 = torch.nn.Linear(output_size, output_size, bias=False)
-        self.g2 = torch.nn.Linear(input_size-output_size, output_size, bias=False)
-        self.gate_bias = torch.nn.Parameter(torch.zeros(output_size))
-
-    def forward(self, x_ent, x_lit):
-        x = torch.cat([x_ent, x_lit], 1)
-        g_embedded = torch.tanh(self.g(x))
-        gate = self.gate_activation(self.g1(x_ent) + self.g2(x_lit) + self.gate_bias)
-        output = (1-gate) * x_ent + gate * g_embedded
-
-        return output
 
 
 class TuckER_Literal(torch.nn.Module):
@@ -238,4 +238,72 @@ class TuckER_KBLN(torch.nn.Module):
         # End numerical literals
 
         pred = torch.sigmoid(score_l + score_n)
+        return pred
+
+
+class DistMult(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(DistMult, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def forward(self, e1_idx, r_idx):
+        e1 = self.input_dropout(self.E(e1_idx).squeeze())
+        r = self.input_dropout(self.R(r_idx).squeeze())
+
+        return torch.sigmoid(torch.mm(e1*r, self.E.transpose(1, 0)))
+
+
+class ConvE(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(ConvE, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.hidden_dropout = torch.nn.Dropout(kwargs["hidden_dropout1"])
+        self.feature_map_dropout = torch.nn.Dropout2d(kwargs["feature_map_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        self.conv1 = torch.nn.Conv2d(1, 32, (3, 3), 1, 0, bias=kwargs["use_bias"])
+
+        self.bn0 = torch.nn.BatchNorm2d(1)
+        self.bn1 = torch.nn.BatchNorm2d(32)
+        self.bn2 = torch.nn.BatchNorm1d(d1)
+        self.register_parameter('b', torch.nn.Parameter(torch.zeros(len(d.entities))))
+        self.fc = torch.nn.Linear(kwargs["hidden_size"], d1)
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def forward(self, e1_idx, r_idx):
+        e1 = self.E(e1_idx)
+        x = self.bn0(e1)
+        x = self.input_dropout(x)
+        x = x.view(-1, 1, e1.size(1))
+
+        r = self.R(r_idx)
+        W_mat = torch.mm(r, self.W.view(r.size(1), -1))
+        W_mat = W_mat.view(-1, e1.size(1), e1.size(1))
+        W_mat = self.hidden_dropout1(W_mat)
+
+        x = torch.bmm(x, W_mat)
+        x = x.view(-1, e1.size(1))
+        x = self.bn1(x)
+        x = self.hidden_dropout2(x)
+        x = torch.mm(x, self.E.weight.transpose(1, 0))
+        pred = torch.sigmoid(x)
         return pred
