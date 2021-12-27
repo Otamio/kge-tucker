@@ -155,16 +155,46 @@ class TuckER_KBLN(torch.nn.Module):
         self.bn0 = torch.nn.BatchNorm1d(d1)
         self.bn1 = torch.nn.BatchNorm1d(d1)
 
+        # Track mapping
+        ent2idx = kwargs["ent2idx"]
+        rel2idx = kwargs["rel2idx"]
+
         # Literal
-        self.num_entities = len(d.entities)
-        numerical_literals = np.load(f'data/{kwargs["dataset"]}/numerical_literals.npy', allow_pickle=True)
+        self.numerical_literals, self.c, self.var = self.load_num_lit(ent2idx, rel2idx)
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
+
+    @staticmethod
+    def load_num_lit(ent2idx, rel2idx, dataset):
+        def load_data(file_path, ent2idx, rel2idx):
+            df = pd.read_csv(file_path, sep='\t', header=None)
+            M = df.shape[0]  # dataset size
+            X = np.zeros([M, 3], dtype=int)
+            for i, row in df.iterrows():
+                X[i, 0] = ent2idx[row[0]]
+                X[i, 1] = rel2idx[row[1]]
+                X[i, 2] = ent2idx[row[2]]
+            return X
+        # Compute numerical literals
+        df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
+        numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
+        for i, (s, p, lit) in enumerate(df.values):
+            try:
+                numerical_literals[ent2idx[s.lower()], rel2idx[p]] = lit
+            except KeyError:
+                continue
         max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
         numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
-        self.numerical_literals = torch.autograd.Variable(torch.from_numpy(numerical_literals))
-        self.n_num_lit = self.numerical_literals.size(1)
-        self.c = torch.autograd.Variable(torch.FloatTensor(c))
-        self.var = torch.autograd.Variable(torch.FloatTensor(var))
-        self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
+        # Compute X_train
+        X_train = load_data(f"data/{dataset}/train.txt", ent2idx, rel2idx).astype(np.int32)
+        h, t = X_train[:, 0], X_train[:, 2]
+        n = numerical_literals[h, :] - numerical_literals[t, :]
+        c = np.mean(n, axis=0).astype('float32')
+        var = np.var(n, axis=0) + 1e-6
+
+        return torch.autograd.Variable(torch.from_numpy(numerical_literals)), \
+               torch.autograd.Variable(torch.FloatTensor(c)), \
+               torch.autograd.Variable(torch.FloatTensor(var))
 
     def init(self):
         xavier_normal_(self.E.weight.data)
