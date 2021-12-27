@@ -75,7 +75,7 @@ class Experiment:
         test_data_idxs = self.get_data_idxs(data)
         er_vocab = self.get_er_vocab(self.get_data_idxs(d.data))
 
-        logging.info("Number of data points: %d\n" % len(test_data_idxs))
+        logging.info("Number of data points: %d" % len(test_data_idxs))
 
         for i in range(0, len(test_data_idxs), self.batch_size):
             data_batch, _ = self.get_batch(er_vocab, test_data_idxs, i)
@@ -107,19 +107,19 @@ class Experiment:
                     else:
                         hits[hits_level].append(0.0)
 
-        logging.info('Hits @10: {0}\n'.format(np.mean(hits[9])))
-        logging.info('Hits @3: {0}\n'.format(np.mean(hits[2])))
-        logging.info('Hits @1: {0}\n'.format(np.mean(hits[0])))
-        logging.info('Mean rank: {0}\n'.format(np.mean(ranks)))
-        logging.info('Mean reciprocal rank: {0}\n'.format(np.mean(1. / np.array(ranks))))
+        logging.info('Hits @10: {0}'.format(np.mean(hits[9])))
+        logging.info('Hits @3: {0}'.format(np.mean(hits[2])))
+        logging.info('Hits @1: {0}'.format(np.mean(hits[0])))
+        logging.info('Mean rank: {0}'.format(np.mean(ranks)))
+        logging.info('Mean reciprocal rank: {0}'.format(np.mean(1. / np.array(ranks))))
 
     def train_and_eval(self, model="tucker"):
-        logging.info(f"Training the {model} model...\n")
+        logging.info(f"Training the {model} model...")
         self.entity_idxs = {d.entities[i]: i for i in range(len(d.entities))}
         self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
 
         train_data_idxs = self.get_data_idxs(d.train_data)
-        logging.info("Number of training data points: %d\n" % len(train_data_idxs))
+        logging.info("Number of training data points: %d" % len(train_data_idxs))
 
         model = model_mapping[model](d, self.ent_vec_dim, self.rel_vec_dim, **self.kwargs)
         if self.cuda:
@@ -132,7 +132,7 @@ class Experiment:
         er_vocab = self.get_er_vocab(train_data_idxs)
         er_vocab_pairs = list(er_vocab.keys())
 
-        logging.info("Starting training...\n")
+        logging.info("Starting training...")
         for it in range(1, self.num_iterations + 1):
             start_train = time.time()
             model.train()
@@ -155,19 +155,19 @@ class Experiment:
                 losses.append(loss.item())
             if self.decay_rate:
                 scheduler.step()
-            logging.info(f"Step at {it}\n")
-            logging.info(f"Training Time elapsed: {time.time() - start_train}\n")
-            logging.info(f"Training Loss: {np.mean(losses)}\n")
+            logging.info(f"Step at {it}")
+            logging.info(f"Training Time elapsed: {time.time() - start_train}")
+            logging.info(f"Training Loss: {np.mean(losses)}")
 
             model.eval()
             with torch.no_grad():
                 if not it % 10:
-                    logging.info(f"Validation at step {it}\n")
+                    logging.info(f"Validation at step {it}")
                     self.evaluate(model, d.valid_data)
-                    logging.info(f"Test at step {it}\n")
+                    logging.info(f"Test at step {it}")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
-                    logging.info(f"\tTest Evaluation Time: {time.time() - start_test}\n")
+                    logging.info(f"Test Evaluation Time: {time.time() - start_test}")
 
 
 if __name__ == '__main__':
