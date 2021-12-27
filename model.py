@@ -89,7 +89,7 @@ class TuckER_Literal(torch.nn.Module):
         # Literal
         numerical_literals = np.load(f'data/{kwargs["dataset"]}/numerical_literals.npy', allow_pickle=True)
         max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
-        self.numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
+        numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
         self.numerical_literals = torch.autograd.Variable(torch.from_numpy(numerical_literals))
         self.n_num_lit = self.numerical_literals.size(1)
         self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
