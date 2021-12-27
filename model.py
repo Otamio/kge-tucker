@@ -245,7 +245,7 @@ class TuckER_KBLN(torch.nn.Module):
         n = n_h.unsqueeze(1).repeat(1, self.num_entities, 1) - n_t
         phi = self.rbf(n)
         # Weights (batch_size, 1, n_lits)
-        w_nf = self.nf_weights(r_idx)
+        w_nf = self.nf_weights(r_idx.view(-1, 1))
 
         score_n = torch.bmm(phi, w_nf.transpose(1, 2)).squeeze()
         # End numerical literals
