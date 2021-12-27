@@ -167,6 +167,7 @@ class TuckER_KBLN(torch.nn.Module):
         rel2idx = kwargs["rel2idx"]
 
         # Literal
+        self.num_entities = len(d.entities)
         self.numerical_literals, self.c, self.var = self.load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
