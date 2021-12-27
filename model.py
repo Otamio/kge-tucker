@@ -269,6 +269,9 @@ class DistMult(torch.nn.Module):
         xavier_normal_(self.E.weight.data)
         xavier_normal_(self.R.weight.data)
 
+    def to_cuda(self):
+        pass
+
     def forward(self, e1_idx, r_idx):
         e1 = self.input_dropout(self.E(e1_idx).squeeze())
         r = self.input_dropout(self.R(r_idx).squeeze())
