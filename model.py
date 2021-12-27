@@ -92,7 +92,7 @@ class TuckER_Literal(torch.nn.Module):
         rel2idx = kwargs["rel2idx"]
 
         # Literal
-        self.numerical_literals = self.load_num_lit(ent2idx, rel2idx)
+        self.numerical_literals = self.load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
 
@@ -160,7 +160,7 @@ class TuckER_KBLN(torch.nn.Module):
         rel2idx = kwargs["rel2idx"]
 
         # Literal
-        self.numerical_literals, self.c, self.var = self.load_num_lit(ent2idx, rel2idx)
+        self.numerical_literals, self.c, self.var = self.load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
 
