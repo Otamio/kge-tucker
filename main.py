@@ -226,4 +226,4 @@ if __name__ == '__main__':
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
                             hidden_dropout2=args.hidden_dropout2, feature_map_dropout=args.feature_map_dropout,
                             hidden_size=args.hidden_size, use_bias=args.use_bias, label_smoothing=args.label_smoothing)
-    experiment.train_and_eval()
+    experiment.train_and_eval(model=model)
