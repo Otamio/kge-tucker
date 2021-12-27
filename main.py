@@ -21,7 +21,8 @@ class Experiment:
     def __init__(self, learning_rate=0.0005, ent_vec_dim=200, rel_vec_dim=200,
                  num_iterations=500, batch_size=128, decay_rate=0., cuda=False,
                  input_dropout=0.3, hidden_dropout1=0.4, hidden_dropout2=0.5,
-                 feature_map_dropout=0.2, hidden_size=10368, label_smoothing=0.):
+                 feature_map_dropout=0.2, hidden_size=10368, use_bias=True,
+                 label_smoothing=0.):
         self.learning_rate = learning_rate
         self.ent_vec_dim = ent_vec_dim
         self.rel_vec_dim = rel_vec_dim
@@ -34,7 +35,7 @@ class Experiment:
         self.relation_idxs = {d.relations[i]: i for i in range(len(d.relations))}
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
                        "hidden_dropout2": hidden_dropout2, "feature_map_dropout": feature_map_dropout,
-                       "hidden_size": hidden_size,
+                       "hidden_size": hidden_size, "use_bias": use_bias,
                        "dataset": dataset, "ent2idx": self.entity_idxs, "rel2idx": self.relation_idxs}
         # Set up log file
         logging.basicConfig(
@@ -201,10 +202,12 @@ if __name__ == '__main__':
                         help="Dropout after the second hidden layer.")
     parser.add_argument("--feature_map_dropout", type=float, default=0.2, nargs="?",
                         help="Dropout after the feature map (ConvE).")
-    parser.add_argument("--hidden_size", type=float, default=0.5, nargs="?",
+    parser.add_argument("--hidden_size", type=float, default=9728, nargs="?",
                         help="hidden_size (ConvE).")
     parser.add_argument("--label_smoothing", type=float, default=0.1, nargs="?",
                         help="Amount of label smoothing.")
+    parser.add_argument('--use-bias', action='store_true',
+                        help='Use a bias in the convolutional layer. Default: True')
 
     args = parser.parse_args()
     dataset = args.dataset
@@ -222,5 +225,5 @@ if __name__ == '__main__':
                             decay_rate=args.dr, ent_vec_dim=args.edim, rel_vec_dim=args.rdim, cuda=args.cuda,
                             input_dropout=args.input_dropout, hidden_dropout1=args.hidden_dropout1,
                             hidden_dropout2=args.hidden_dropout2, feature_map_dropout=args.feature_map_dropout,
-                            hidden_size=args.hidden_size, label_smoothing=args.label_smoothing)
+                            hidden_size=args.hidden_size, use_bias=args.use_bias, label_smoothing=args.label_smoothing)
     experiment.train_and_eval()
