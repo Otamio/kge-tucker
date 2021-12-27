@@ -29,8 +29,8 @@ if __name__ == "__main__":
                        "--input_dropout 0.2 --hidden_dropout1 0.2 --hidden_dropout2 0.3 --label_smoothing 0.0"
     elif model in set(["distmult"]):
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
-                  "--num_iterations 500 --batch_size 128 --lr 0.003 --dr 0.995 --edim 200 --rdim 200 " \
-                  "--input_dropout 0.2 --label_smoothing 0.1"
+                  "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
+                  "--edim 200 --rdim 200 --input_dropout 0.2 --label_smoothing 0.1"
     else:
         print(model, "is not supported")
         exit()

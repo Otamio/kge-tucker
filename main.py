@@ -166,7 +166,7 @@ class Experiment:
 
             model.eval()
             with torch.no_grad():
-                if not it % 10:
+                if not it % eval_step:
                     logging.info(f"Validation at step {it}")
                     self.evaluate(model, d.valid_data)
                     logging.info(f"Test at step {it}")
@@ -209,10 +209,13 @@ if __name__ == '__main__':
                         help="Amount of label smoothing.")
     parser.add_argument('--use-bias', action='store_true',
                         help='Use a bias in the convolutional layer. Default: True')
+    parser.add_argument("--eval_step", type=int, default=10, nargs="?",
+                        help="Evaluation step.")
 
     args = parser.parse_args()
     dataset = args.dataset
     model = args.model
+    eval_step = args.eval_step
     log_file = f"out/{dataset}_{model}.log"
     data_dir = "data/%s/" % dataset
     torch.backends.cudnn.deterministic = True
