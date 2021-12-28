@@ -436,6 +436,65 @@ class ComplEx_Literal(torch.nn.Module):
         return torch.sigmoid(realrealreal + realimgimg + imgrealimg - imgimgreal)
 
 
+class ComplEx_KBLN(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(ComplEx_KBLN, self).__init__()
+
+        assert(d1 == d2)
+
+        self.dim = d1
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        # Literal
+        self.num_entities = len(d.entities)
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(kwargs["ent2idx"],
+                                                                      kwargs["rel2idx"],
+                                                                      kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.c = self.c.cuda()
+        self.var = self.var.cuda()
+
+    def rbf(self, n):
+        return torch.exp(-(n - self.c)**2 / self.var)
+
+    def forward(self, e1_idx, r_idx):
+        e1_real = self.input_dropout(self.E(e1_idx)[:, :self.dim//2].squeeze())
+        e1_img = self.input_dropout(self.E(e1_idx)[:, self.dim//2:].squeeze())
+        r_real = self.input_dropout(self.R(r_idx)[:, :self.dim//2].squeeze())
+        r_img = self.input_dropout(self.R(r_idx)[:, self.dim//2:].squeeze())
+
+        realrealreal = torch.mm(e1_real*r_real, self.E.weight[:, :self.dim//2].transpose(1, 0))
+        realimgimg = torch.mm(e1_real*r_img, self.E.weight[:, self.dim//2:].transpose(1, 0))
+        imgrealimg = torch.mm(e1_img*r_real, self.E.weight[:, self.dim//2:].transpose(1, 0))
+        imgimgreal = torch.mm(e1_img*r_img, self.E.weight[:, :self.dim//2].transpose(1, 0))
+
+        score_l = realrealreal + realimgimg + imgrealimg - imgimgreal
+
+        # Begin literals
+        n_h = self.numerical_literals[e1_idx.view(-1)]
+        n_t = self.numerical_literals
+
+        n = n_h.unsqueeze(1).repeat(1, self.num_entities, 1) - n_t
+        phi = self.rbf(n)
+        w_nf = self.nf_weights(r_idx.view(-1, 1))
+
+        score_n = torch.bmm(phi, w_nf.transpose(1, 2)).squeeze()
+        # End literals
+
+        return torch.sigmoid(score_l + score_n)
+
+
 class ConvE(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
         super(ConvE, self).__init__()
