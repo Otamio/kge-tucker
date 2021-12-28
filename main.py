@@ -13,7 +13,7 @@ model_mapping = {
     "tucker_kbln": TuckER_KBLN,
     "conve": ConvE,
     "distmult": DistMult,
-    "distmult_literale": DistMult_LiteralE
+    "distmult_literal": DistMult_Literal
 }
 
 

@@ -279,9 +279,9 @@ class DistMult(torch.nn.Module):
         return torch.sigmoid(torch.mm(e1*r, self.E.weight.transpose(1, 0)))
 
 
-class DistMult_LiteralE(torch.nn.Module):
+class DistMult_Literal(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
-        super(DistMult_LiteralE, self).__init__()
+        super(DistMult_Literal, self).__init__()
 
         assert(d1 == d2)
 

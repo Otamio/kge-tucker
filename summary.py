@@ -26,35 +26,41 @@ def convert_result(dic):
 def main():
 
     results = {}
-
     for fname in glob.iglob("out/*.log"):
-        with open(fname) as fd:
-            epoc = 0
-            result = []
-            cache = {}
-            for line in fd:
-                line = line.strip()
-                if line.startswith("Iteration:"):
-                    epoc = int(line.split(':')[1])
-                elif len(cache) > 0 and \
-                        (line.startswith("Validation:") or line.startswith("Test:")):
-                    if line.startswith("Validation:"):
-                        result[-1] = EpocResult(epoc, result[-1], convert_result(cache))
-                    elif line.startswith("Test:"):
-                        result.append(convert_result(cache))
-                    cache = {}
-                elif line.startswith("Hits @10"):
-                    cache["hits@10"] = float(line.split(':')[1])
-                elif line.startswith("Hits @3"):
-                    cache["hits@3"] = float(line.split(':')[1])
-                elif line.startswith("Hits @1"):
-                    cache["hits@1"] = float(line.split(':')[1])
-                elif line.startswith("Mean rank"):
-                    cache["mr"] = float(line.split(':')[1])
-                elif line.startswith("Mean reciprocal rank"):
-                    cache["mrr"] = float(line.split(':')[1])
-            result[-1] = EpocResult(epoc, result[-1], convert_result(cache))
-        results[fname.split('/')[1].split('.')[0].strip()] = result
+        try:
+            with open(fname) as fd:
+                epoc = 0
+                result = []
+                valid, test = {}, {}
+                current = valid
+                for line in fd:
+                    line = line.split('INFO')[1].strip()
+                    if line.startswith("Validation at"):
+                        if len(test) > 0:
+                            result.append(EpocResult(epoc, convert_result(valid), convert_result(test)))
+                        valid, test = {}, {}
+                        current = valid
+                        epoc = int(line.split()[-1])
+                    if line.startswith("Test at"):
+                        current = test
+                    elif line.startswith("Hits @10"):
+                        current["hits@10"] = float(line.split(':')[1])
+                    elif line.startswith("Hits @3"):
+                        current["hits@3"] = float(line.split(':')[1])
+                    elif line.startswith("Hits @1"):
+                        current["hits@1"] = float(line.split(':')[1])
+                    elif line.startswith("Mean rank"):
+                        current["mr"] = float(line.split(':')[1])
+                    elif line.startswith("Mean reciprocal rank"):
+                        current["mrr"] = float(line.split(':')[1])
+                result.append(EpocResult(epoc, convert_result(valid), convert_result(test)))
+            if epoc % 100 == 0:
+                results[fname.split('/')[1].split('.')[0].strip()] = result
+            else:
+                print(fname, epoc)
+        except KeyError as e:
+            print('KeyError:', fname, e)
+            pass
 
     for exp, res in sorted(results.items()):
         best = max(res)
