@@ -415,15 +415,23 @@ class ComplEx_Literal(torch.nn.Module):
         xavier_normal_(self.R.weight.data)
 
     def forward(self, e1_idx, r_idx):
-        e1_real = self.input_dropout(self.E(e1_idx).squeeze())
-        e1_img = self.input_dropout(self.E(e1_idx).squeeze())
-        r_real = self.input_dropout(self.R(r_idx).squeeze())
-        r_img = self.input_dropout(self.R(r_idx).squeeze())
+        e1, r = self.E(e1_idx), self.R(r_idx)
 
-        realrealreal = torch.mm(e1_real*r_real, self.E_real.weight.transpose(1, 0))
-        realimgimg = torch.mm(e1_real*r_img, self.E_img.weight.transpose(1, 0))
-        imgrealimg = torch.mm(e1_img*r_real, self.E_img.weight.transpose(1, 0))
-        imgimgreal = torch.mm(e1_img*r_img, self.E_real.weight.transpose(1, 0))
+        # Begin literals
+        e1_lit = self.numerical_literals[e1_idx.view(-1)]
+        e1 = self.emb_num_lit(e1, e1_lit)
+        e2 = self.emb_num_lit(self.E.weight, self.numerical_literals)
+        # End literals
+
+        e1_real = self.input_dropout(e1[:, :self.dim//2].squeeze())
+        e1_img = self.input_dropout(e1[:, self.dim//2:].squeeze())
+        r_real = self.input_dropout(r[:, :self.dim//2].squeeze())
+        r_img = self.input_dropout(r[:, self.dim//2:].squeeze())
+
+        realrealreal = torch.mm(e1_real*r_real, e2[:, :self.dim//2].transpose(1, 0))
+        realimgimg = torch.mm(e1_real*r_img, e2[:, self.dim//2:].transpose(1, 0))
+        imgrealimg = torch.mm(e1_img*r_real, e2[:, self.dim//2:].transpose(1, 0))
+        imgimgreal = torch.mm(e1_img*r_img, e2[:, :self.dim//2].transpose(1, 0))
 
         return torch.sigmoid(realrealreal + realimgimg + imgrealimg - imgimgreal)
 
