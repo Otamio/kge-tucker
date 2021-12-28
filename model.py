@@ -549,7 +549,7 @@ class ConvE(torch.nn.Module):
 
 class ConvE_Literal(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
-        super(ConvE, self).__init__()
+        super(ConvE_Literal, self).__init__()
 
         assert(d1 == d2)
 
@@ -614,7 +614,7 @@ class ConvE_Literal(torch.nn.Module):
 
 class ConvE_KBLN(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
-        super(ConvE, self).__init__()
+        super(ConvE_KBLN, self).__init__()
 
         assert(d1 == d2)
 
