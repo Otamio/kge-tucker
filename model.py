@@ -376,15 +376,15 @@ class ComplEx(torch.nn.Module):
         pass
 
     def forward(self, e1_idx, r_idx):
-        e1_real = self.input_dropout(self.E_real(e1_idx).squeeze())
-        e1_img = self.input_dropout(self.E_img(e1_idx).squeeze())
-        r_real = self.input_dropout(self.R_real(r_idx).squeeze())
-        r_img = self.input_dropout(self.R_img(r_idx).squeeze())
+        e1_real = self.input_dropout(self.E(e1_idx)[:, :self.dim//2].squeeze())
+        e1_img = self.input_dropout(self.E(e1_idx)[:, self.dim//2:].squeeze())
+        r_real = self.input_dropout(self.R(r_idx)[:, :self.dim//2].squeeze())
+        r_img = self.input_dropout(self.R(r_idx)[:, self.dim//2:].squeeze())
 
-        realrealreal = torch.mm(e1_real*r_real, self.E_real.weight.transpose(1, 0))
-        realimgimg = torch.mm(e1_real*r_img, self.E_img.weight.transpose(1, 0))
-        imgrealimg = torch.mm(e1_img*r_real, self.E_img.weight.transpose(1, 0))
-        imgimgreal = torch.mm(e1_img*r_img, self.E_real.weight.transpose(1, 0))
+        realrealreal = torch.mm(e1_real*r_real, self.E.weight[:, :self.dim//2].transpose(1, 0))
+        realimgimg = torch.mm(e1_real*r_img, self.E.weight[:, self.dim//2:].transpose(1, 0))
+        imgrealimg = torch.mm(e1_img*r_real, self.E.weight[:, self.dim//2:].transpose(1, 0))
+        imgimgreal = torch.mm(e1_img*r_img, self.E.weight[:, :self.dim//2].transpose(1, 0))
 
         return torch.sigmoid(realrealreal + realimgimg + imgrealimg - imgimgreal)
 
