@@ -510,32 +510,35 @@ class ConvE(torch.nn.Module):
         self.loss = torch.nn.BCELoss()
 
         self.conv1 = torch.nn.Conv2d(1, 32, (3, 3), 1, 0, bias=kwargs["use_bias"])
-
         self.bn0 = torch.nn.BatchNorm2d(1)
         self.bn1 = torch.nn.BatchNorm2d(32)
         self.bn2 = torch.nn.BatchNorm1d(d1)
         self.register_parameter('b', torch.nn.Parameter(torch.zeros(len(d.entities))))
         self.fc = torch.nn.Linear(kwargs["hidden_size"], d1)
 
+        self.emb_dim1 = kwargs["embedding_shape1"]
+        self.emb_dim2 = d1 // self.emb_dim1
+
     def init(self):
         xavier_normal_(self.E.weight.data)
         xavier_normal_(self.R.weight.data)
 
     def forward(self, e1_idx, r_idx):
-        e1 = self.E(e1_idx)
-        x = self.bn0(e1)
-        x = self.input_dropout(x)
-        x = x.view(-1, 1, e1.size(1))
 
-        r = self.R(r_idx)
-        W_mat = torch.mm(r, self.W.view(r.size(1), -1))
-        W_mat = W_mat.view(-1, e1.size(1), e1.size(1))
-        W_mat = self.hidden_dropout1(W_mat)
+        e1 = self.E(e1_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        r = self.R(r_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        stacked_inputs = self.bn0(torch.cat([e1, r], 2))
 
-        x = torch.bmm(x, W_mat)
-        x = x.view(-1, e1.size(1))
+        x = self.input_dropout(stacked_inputs)
+        x = self.conv1(x)
         x = self.bn1(x)
-        x = self.hidden_dropout2(x)
+        x = torch.nn.functional.relu(x)
+        x = self.feature_map_dropout(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc(x)
+        x = self.hidden_dropout(x)
+        x = self.bn2(x)
+        x = torch.nn.functional.relu(x)
         x = torch.mm(x, self.E.weight.transpose(1, 0))
-        pred = torch.sigmoid(x)
-        return pred
+        x += self.b.expand_as(x)
+        return torch.sigmoid(x)
