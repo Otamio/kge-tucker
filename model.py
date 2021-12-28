@@ -586,11 +586,11 @@ class ConvE_Literal(torch.nn.Module):
 
     def forward(self, e1_idx, r_idx):
 
-        e1 = self.E(e1_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        e1 = self.E(e1_idx)
 
         # Begin literals
         e1_lit = self.numerical_literals[e1_idx.view(-1)]
-        e1 = self.emb_num_lit(e1, e1_lit)
+        e1 = self.emb_num_lit(e1, e1_lit).view(-1, 1, self.emb_dim1, self.emb_dim2)
         e2 = self.emb_num_lit(self.E.weight, self.numerical_literals)
         # End literals
 
