@@ -4,7 +4,7 @@ import torch
 from torch.nn.init import xavier_normal_
 
 
-def load_num_lit(ent2idx, dataset):
+def load_num_lit(ent2idx, dataset, wrap=True):
     df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
     rel2idx = {v: k for k, v in enumerate(df[1].unique())}
     numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
@@ -15,7 +15,9 @@ def load_num_lit(ent2idx, dataset):
             continue
     max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
     numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
-    return torch.autograd.Variable(torch.from_numpy(numerical_literals))
+    if wrap:
+        return torch.autograd.Variable(torch.from_numpy(numerical_literals))
+    return numerical_literals
 
 def load_num_lit_kbln(ent2idx, rel2idx, dataset):
     def load_data(file_path, ent2idx, rel2idx):
@@ -28,7 +30,7 @@ def load_num_lit_kbln(ent2idx, rel2idx, dataset):
             X[i, 2] = ent2idx[row[2]]
         return X
     # Compute numerical literals
-    numerical_literals = load_num_lit(ent2idx, dataset)
+    numerical_literals = load_num_lit(ent2idx, dataset, wrap=False)
     # Compute X_train
     X_train = load_data(f"data/{dataset}/train.txt", ent2idx, rel2idx).astype(np.int32)
     h, t = X_train[:, 0], X_train[:, 2]
@@ -36,7 +38,7 @@ def load_num_lit_kbln(ent2idx, rel2idx, dataset):
     c = np.mean(n, axis=0).astype('float32')
     var = np.var(n, axis=0) + 1e-6
 
-    return numerical_literals, \
+    return torch.autograd.Variable(torch.from_numpy(numerical_literals)), \
            torch.autograd.Variable(torch.FloatTensor(c)), \
            torch.autograd.Variable(torch.FloatTensor(var))
 
