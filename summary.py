@@ -69,7 +69,10 @@ def main():
 
     for exp, res in sorted(results.items()):
         best = max(res)
-        print(exp, best.epoc, '\t', best.test.mrr, '\t', best.test.hits_1, '\t', best.test.hits_10)
+        print(exp, best.epoc,
+              '\t', round(best.test.mrr, 3),
+              '\t', round(best.test.hits_1, 3),
+              '\t', round(best.test.hits_10, 3))
 
 
 if __name__ == "__main__":
