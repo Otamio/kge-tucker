@@ -362,18 +362,15 @@ class ComplEx(torch.nn.Module):
 
         assert(d1 == d2)
 
-        self.E_real = torch.nn.Embedding(len(d.entities), d1 // 2)
-        self.E_img = torch.nn.Embedding(len(d.entities), d1 // 2)
-        self.R_real = torch.nn.Embedding(len(d.relations), d2 // 2)
-        self.R_img = torch.nn.Embedding(len(d.relations), d2 // 2)
+        self.dim = d1
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
         self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
         self.loss = torch.nn.BCELoss()
 
     def init(self):
-        xavier_normal_(self.E_real.weight.data)
-        xavier_normal_(self.E_img.weight.data)
-        xavier_normal_(self.R_real.weight.data)
-        xavier_normal_(self.R_img.weight.data)
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
 
     def to_cuda(self):
         pass
@@ -383,6 +380,45 @@ class ComplEx(torch.nn.Module):
         e1_img = self.input_dropout(self.E_img(e1_idx).squeeze())
         r_real = self.input_dropout(self.R_real(r_idx).squeeze())
         r_img = self.input_dropout(self.R_img(r_idx).squeeze())
+
+        realrealreal = torch.mm(e1_real*r_real, self.E_real.weight.transpose(1, 0))
+        realimgimg = torch.mm(e1_real*r_img, self.E_img.weight.transpose(1, 0))
+        imgrealimg = torch.mm(e1_img*r_real, self.E_img.weight.transpose(1, 0))
+        imgimgreal = torch.mm(e1_img*r_img, self.E_real.weight.transpose(1, 0))
+
+        return torch.sigmoid(realrealreal + realimgimg + imgrealimg - imgimgreal)
+
+
+class ComplEx_Literal(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(ComplEx, self).__init__()
+
+        assert(d1 == d2)
+
+        self.dim = d1
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        # Literal
+        self.numerical_literals = load_num_lit(kwargs["ent2idx"], kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.emb_num_lit = self.emb_num_lit.cuda()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def forward(self, e1_idx, r_idx):
+        e1_real = self.input_dropout(self.E(e1_idx).squeeze())
+        e1_img = self.input_dropout(self.E(e1_idx).squeeze())
+        r_real = self.input_dropout(self.R(r_idx).squeeze())
+        r_img = self.input_dropout(self.R(r_idx).squeeze())
 
         realrealreal = torch.mm(e1_real*r_real, self.E_real.weight.transpose(1, 0))
         realimgimg = torch.mm(e1_real*r_img, self.E_img.weight.transpose(1, 0))
