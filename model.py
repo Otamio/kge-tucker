@@ -391,7 +391,7 @@ class ComplEx(torch.nn.Module):
 
 class ComplEx_Literal(torch.nn.Module):
     def __init__(self, d, d1, d2, **kwargs):
-        super(ComplEx, self).__init__()
+        super(ComplEx_Literal, self).__init__()
 
         assert(d1 == d2)
 
