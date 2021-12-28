@@ -16,6 +16,37 @@ def load_num_lit(ent2idx, rel2idx, dataset):
     numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
     return torch.autograd.Variable(torch.from_numpy(numerical_literals))
 
+def load_num_lit_kbln(ent2idx, rel2idx, dataset):
+    def load_data(file_path, ent2idx, rel2idx):
+        df = pd.read_csv(file_path, sep='\t', header=None)
+        M = df.shape[0]  # dataset size
+        X = np.zeros([M, 3], dtype=int)
+        for i, row in df.iterrows():
+            X[i, 0] = ent2idx[row[0]]
+            X[i, 1] = rel2idx[row[1]]
+            X[i, 2] = ent2idx[row[2]]
+        return X
+    # Compute numerical literals
+    df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
+    numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
+    for i, (s, p, lit) in enumerate(df.values):
+        try:
+            numerical_literals[ent2idx[s.lower()], rel2idx[p]] = lit
+        except KeyError:
+            continue
+    max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
+    numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
+    # Compute X_train
+    X_train = load_data(f"data/{dataset}/train.txt", ent2idx, rel2idx).astype(np.int32)
+    h, t = X_train[:, 0], X_train[:, 2]
+    n = numerical_literals[h, :] - numerical_literals[t, :]
+    c = np.mean(n, axis=0).astype('float32')
+    var = np.var(n, axis=0) + 1e-6
+
+    return torch.autograd.Variable(torch.from_numpy(numerical_literals)), \
+           torch.autograd.Variable(torch.FloatTensor(c)), \
+           torch.autograd.Variable(torch.FloatTensor(var))
+
 
 class Gate(torch.nn.Module):
 
@@ -168,41 +199,9 @@ class TuckER_KBLN(torch.nn.Module):
 
         # Literal
         self.num_entities = len(d.entities)
-        self.numerical_literals, self.c, self.var = self.load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(ent2idx, rel2idx, kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
-
-    @staticmethod
-    def load_num_lit(ent2idx, rel2idx, dataset):
-        def load_data(file_path, ent2idx, rel2idx):
-            df = pd.read_csv(file_path, sep='\t', header=None)
-            M = df.shape[0]  # dataset size
-            X = np.zeros([M, 3], dtype=int)
-            for i, row in df.iterrows():
-                X[i, 0] = ent2idx[row[0]]
-                X[i, 1] = rel2idx[row[1]]
-                X[i, 2] = ent2idx[row[2]]
-            return X
-        # Compute numerical literals
-        df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
-        numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
-        for i, (s, p, lit) in enumerate(df.values):
-            try:
-                numerical_literals[ent2idx[s.lower()], rel2idx[p]] = lit
-            except KeyError:
-                continue
-        max_lit, min_lit = np.max(numerical_literals, axis=0), np.min(numerical_literals, axis=0)
-        numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
-        # Compute X_train
-        X_train = load_data(f"data/{dataset}/train.txt", ent2idx, rel2idx).astype(np.int32)
-        h, t = X_train[:, 0], X_train[:, 2]
-        n = numerical_literals[h, :] - numerical_literals[t, :]
-        c = np.mean(n, axis=0).astype('float32')
-        var = np.var(n, axis=0) + 1e-6
-
-        return torch.autograd.Variable(torch.from_numpy(numerical_literals)), \
-               torch.autograd.Variable(torch.FloatTensor(c)), \
-               torch.autograd.Variable(torch.FloatTensor(var))
 
     def to_cuda(self):
         self.numerical_literals = self.numerical_literals.cuda()
@@ -320,6 +319,58 @@ class DistMult_Literal(torch.nn.Module):
         e1 = self.input_dropout(e1)
         r = self.input_dropout(r)
         return torch.sigmoid(torch.mm(e1*r, e2.transpose(1, 0)))
+
+
+class DistMult_KBLN(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(DistMult_KBLN, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        # Track mapping
+        ent2idx = kwargs["ent2idx"]
+        rel2idx = kwargs["rel2idx"]
+
+        # Literal
+        self.num_entities = len(d.entities)
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(ent2idx, rel2idx, kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.c = self.c.cuda()
+        self.var = self.var.cuda()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def rbf(self, n):
+        return torch.exp(-(n - self.c)**2 / self.var)
+
+    def forward(self, e1_idx, r_idx):
+        e1 = self.input_dropout(self.E(e1_idx).squeeze())
+        r = self.input_dropout(self.R(r_idx).squeeze())
+        score_l = torch.mm(e1*r, self.E.weight.transpose(1, 0))
+
+        # Begin literals
+        n_h = self.numerical_literals[e1_idx.view(-1)]
+        n_t = self.numerical_literals
+
+        n = n_h.unsqueeze(1).repeat(1, self.num_entities, 1) - n_t
+        phi = self.rbf(n)
+        w_nf = self.nf_weights(r_idx.view(-1, 1))
+
+        score_n = torch.bmm(phi, w_nf.transpose(1, 2)).squeeze()
+        # End literals
+        
+        return torch.sigmoid(score_l + score_n)
 
 
 class ConvE(torch.nn.Module):
