@@ -519,6 +519,9 @@ class ConvE(torch.nn.Module):
         self.emb_dim1 = kwargs["embedding_shape1"]
         self.emb_dim2 = d1 // self.emb_dim1
 
+    def to_cuda(self):
+        pass
+
     def init(self):
         xavier_normal_(self.E.weight.data)
         xavier_normal_(self.R.weight.data)
