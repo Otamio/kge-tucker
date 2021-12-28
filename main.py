@@ -15,7 +15,8 @@ model_mapping = {
     "distmult": DistMult,
     "distmult_literal": DistMult_Literal,
     "distmult_kbln": DistMult_KBLN,
-    "complex": ComplEx
+    "complex": ComplEx,
+    "complex_literal": ComplEx_Literal
 }
 
 
