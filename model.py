@@ -4,8 +4,9 @@ import torch
 from torch.nn.init import xavier_normal_
 
 
-def load_num_lit(ent2idx, rel2idx, dataset):
+def load_num_lit(ent2idx, dataset):
     df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
+    rel2idx = {v: k for k, v in enumerate(df[1].unique())}
     numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
     for i, (s, p, lit) in enumerate(df.values):
         try:
@@ -16,7 +17,7 @@ def load_num_lit(ent2idx, rel2idx, dataset):
     numerical_literals = (numerical_literals - min_lit) / (max_lit - min_lit + 1e-8)
     return torch.autograd.Variable(torch.from_numpy(numerical_literals))
 
-def load_num_lit_kbln(ent2idx, rel2idx, dataset):
+def load_num_lit_kbln(ent2idx, dataset):
     def load_data(file_path, ent2idx, rel2idx):
         df = pd.read_csv(file_path, sep='\t', header=None)
         M = df.shape[0]  # dataset size
@@ -28,6 +29,7 @@ def load_num_lit_kbln(ent2idx, rel2idx, dataset):
         return X
     # Compute numerical literals
     df = pd.read_csv(f'data/{dataset}/numerical_literals.txt', header=None, sep='\t')
+    rel2idx = {v: k for k, v in enumerate(df[1].unique())}
     numerical_literals = np.zeros([len(ent2idx), len(rel2idx)], dtype=np.float32)
     for i, (s, p, lit) in enumerate(df.values):
         try:
@@ -134,12 +136,8 @@ class TuckER_Literal(torch.nn.Module):
         self.bn0 = torch.nn.BatchNorm1d(d1)
         self.bn1 = torch.nn.BatchNorm1d(d1)
 
-        # Track mapping
-        ent2idx = kwargs["ent2idx"]
-        rel2idx = kwargs["rel2idx"]
-
         # Literal
-        self.numerical_literals = load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals = load_num_lit(kwargs["ent2idx"], kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
 
@@ -193,13 +191,9 @@ class TuckER_KBLN(torch.nn.Module):
         self.bn0 = torch.nn.BatchNorm1d(d1)
         self.bn1 = torch.nn.BatchNorm1d(d1)
 
-        # Track mapping
-        ent2idx = kwargs["ent2idx"]
-        rel2idx = kwargs["rel2idx"]
-
         # Literal
         self.num_entities = len(d.entities)
-        self.numerical_literals, self.c, self.var = load_num_lit_kbln(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(kwargs["ent2idx"], kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
 
@@ -289,12 +283,8 @@ class DistMult_Literal(torch.nn.Module):
         self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
         self.loss = torch.nn.BCELoss()
 
-        # Track mapping
-        ent2idx = kwargs["ent2idx"]
-        rel2idx = kwargs["rel2idx"]
-
         # Literal
-        self.numerical_literals = load_num_lit(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals = load_num_lit(kwargs["ent2idx"], kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
 
@@ -332,13 +322,9 @@ class DistMult_KBLN(torch.nn.Module):
         self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
         self.loss = torch.nn.BCELoss()
 
-        # Track mapping
-        ent2idx = kwargs["ent2idx"]
-        rel2idx = kwargs["rel2idx"]
-
         # Literal
         self.num_entities = len(d.entities)
-        self.numerical_literals, self.c, self.var = load_num_lit_kbln(ent2idx, rel2idx, kwargs["dataset"])
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(kwargs["ent2idx"], kwargs["dataset"])
         self.n_num_lit = self.numerical_literals.size(1)
         self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
 

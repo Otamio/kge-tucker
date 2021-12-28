@@ -3,7 +3,7 @@ from collections import namedtuple
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", type=str, default='fb15k237')
+parser.add_argument("--key", type=str, default='fb15k237')
 Result = namedtuple("Result", "mr mrr hits_1 hits_3 hits_10")
 
 
@@ -30,7 +30,7 @@ def main():
 
     args = parser.parse_args()
     results = {}
-    for fname in glob.iglob(f"out/{args.dataset}*.log"):
+    for fname in glob.iglob(f"out/*{args.key}*.log"):
         try:
             with open(fname) as fd:
                 epoc = 0
@@ -61,7 +61,7 @@ def main():
             if epoc % 100 == 0:
                 results[fname.split('/')[1].split('.')[0].strip()] = result
             else:
-                print(fname, epoc)
+                print('Running:', fname, epoc)
         except KeyError as e:
             print('KeyError:', fname, e)
             pass
