@@ -1,6 +1,9 @@
 import glob
 from collections import namedtuple
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", type=str, default='fb15k237')
 Result = namedtuple("Result", "mr mrr hits_1 hits_3 hits_10")
 
 
@@ -25,8 +28,9 @@ def convert_result(dic):
 
 def main():
 
+    args = parser.parse_args()
     results = {}
-    for fname in glob.iglob("out/*.log"):
+    for fname in glob.iglob(f"out/{args.dataset}*.log"):
         try:
             with open(fname) as fd:
                 epoc = 0
