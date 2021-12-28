@@ -14,7 +14,8 @@ model_mapping = {
     "conve": ConvE,
     "distmult": DistMult,
     "distmult_literal": DistMult_Literal,
-    "distmult_kbln": DistMult_KBLN
+    "distmult_kbln": DistMult_KBLN,
+    "complex": ComplEx
 }
 
 
