@@ -545,3 +545,144 @@ class ConvE(torch.nn.Module):
         x = torch.mm(x, self.E.weight.transpose(1, 0))
         x += self.b.expand_as(x)
         return torch.sigmoid(x)
+
+
+class ConvE_Literal(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(ConvE, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.hidden_dropout = torch.nn.Dropout(kwargs["hidden_dropout1"])
+        self.feature_map_dropout = torch.nn.Dropout2d(kwargs["feature_map_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        self.conv1 = torch.nn.Conv2d(1, 32, (3, 3), 1, 0, bias=kwargs["use_bias"])
+        self.bn0 = torch.nn.BatchNorm2d(1)
+        self.bn1 = torch.nn.BatchNorm2d(32)
+        self.bn2 = torch.nn.BatchNorm1d(d1)
+        self.register_parameter('b', torch.nn.Parameter(torch.zeros(len(d.entities))))
+        self.fc = torch.nn.Linear(kwargs["hidden_size"], d1)
+
+        self.emb_dim1 = kwargs["embedding_shape1"]
+        self.emb_dim2 = d1 // self.emb_dim1
+
+        # Literal
+        self.numerical_literals = load_num_lit(kwargs["ent2idx"], kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.emb_num_lit = Gate(d1 + self.n_num_lit, d1)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.emb_num_lit = self.emb_num_lit.cuda()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def forward(self, e1_idx, r_idx):
+
+        e1 = self.E(e1_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+
+        # Begin literals
+        e1_lit = self.numerical_literals[e1_idx.view(-1)]
+        e1 = self.emb_num_lit(e1, e1_lit)
+        e2 = self.emb_num_lit(self.E.weight, self.numerical_literals)
+        # End literals
+
+        r = self.R(r_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        stacked_inputs = self.bn0(torch.cat([e1, r], 2))
+
+        x = self.input_dropout(stacked_inputs)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = torch.nn.functional.relu(x)
+        x = self.feature_map_dropout(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc(x)
+        x = self.hidden_dropout(x)
+        x = self.bn2(x)
+        x = torch.nn.functional.relu(x)
+        x = torch.mm(x, e2.transpose(1, 0))
+        x += self.b.expand_as(x)
+        return torch.sigmoid(x)
+
+
+class ConvE_KBLN(torch.nn.Module):
+    def __init__(self, d, d1, d2, **kwargs):
+        super(ConvE, self).__init__()
+
+        assert(d1 == d2)
+
+        self.E = torch.nn.Embedding(len(d.entities), d1)
+        self.R = torch.nn.Embedding(len(d.relations), d2)
+
+        self.input_dropout = torch.nn.Dropout(kwargs["input_dropout"])
+        self.hidden_dropout = torch.nn.Dropout(kwargs["hidden_dropout1"])
+        self.feature_map_dropout = torch.nn.Dropout2d(kwargs["feature_map_dropout"])
+        self.loss = torch.nn.BCELoss()
+
+        self.conv1 = torch.nn.Conv2d(1, 32, (3, 3), 1, 0, bias=kwargs["use_bias"])
+        self.bn0 = torch.nn.BatchNorm2d(1)
+        self.bn1 = torch.nn.BatchNorm2d(32)
+        self.bn2 = torch.nn.BatchNorm1d(d1)
+        self.register_parameter('b', torch.nn.Parameter(torch.zeros(len(d.entities))))
+        self.fc = torch.nn.Linear(kwargs["hidden_size"], d1)
+
+        self.emb_dim1 = kwargs["embedding_shape1"]
+        self.emb_dim2 = d1 // self.emb_dim1
+
+        # Literal
+        self.num_entities = len(d.entities)
+        self.numerical_literals, self.c, self.var = load_num_lit_kbln(kwargs["ent2idx"],
+                                                                      kwargs["rel2idx"],
+                                                                      kwargs["dataset"])
+        self.n_num_lit = self.numerical_literals.size(1)
+        self.nf_weights = torch.nn.Embedding(len(d.relations), self.n_num_lit)
+
+    def to_cuda(self):
+        self.numerical_literals = self.numerical_literals.cuda()
+        self.c = self.c.cuda()
+        self.var = self.var.cuda()
+
+    def init(self):
+        xavier_normal_(self.E.weight.data)
+        xavier_normal_(self.R.weight.data)
+
+    def rbf(self, n):
+        return torch.exp(-(n - self.c)**2 / self.var)
+
+    def forward(self, e1_idx, r_idx):
+        e1 = self.E(e1_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        r = self.R(r_idx).view(-1, 1, self.emb_dim1, self.emb_dim2)
+        stacked_inputs = self.bn0(torch.cat([e1, r], 2))
+
+        x = self.input_dropout(stacked_inputs)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = torch.nn.functional.relu(x)
+        x = self.feature_map_dropout(x)
+        x = x.view(x.shape[0], -1)
+        x = self.fc(x)
+        x = self.hidden_dropout(x)
+        x = self.bn2(x)
+        x = torch.nn.functional.relu(x)
+        x = torch.mm(x, self.E.weight.transpose(1, 0))
+        x += self.b.expand_as(x)
+
+        # Begin literals
+        n_h = self.numerical_literals[e1_idx.view(-1)]
+        n_t = self.numerical_literals
+
+        n = n_h.unsqueeze(1).repeat(1, self.num_entities, 1) - n_t
+        phi = self.rbf(n)
+        w_nf = self.nf_weights(r_idx.view(-1, 1))
+
+        score_n = torch.bmm(phi, w_nf.transpose(1, 2)).squeeze()
+        # End literals
+
+        return torch.sigmoid(x + score_n)

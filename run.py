@@ -35,7 +35,7 @@ if __name__ == "__main__":
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                   "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
                   "--edim 400 --rdim 400 --input_dropout 0.2 --label_smoothing 0.1"
-    elif model in set(["conve"]):
+    elif model in set(["conve", "conve_literal", "conve_kbln"]):
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                   "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
                   "--edim 200 --rdim 200 --input_dropout 0.2 --hidden_dropout1 0.3 --feature_map_dropout 0.2 " \
