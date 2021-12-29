@@ -5,6 +5,8 @@ from collections import defaultdict
 from model import *
 from torch.optim.lr_scheduler import ExponentialLR
 import argparse
+import os
+import json
 
 
 model_mapping = {
@@ -58,6 +60,17 @@ class Experiment:
         formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
         console.setFormatter(formatter)
         logging.getLogger('').addHandler(console)
+        # If need checkpoint, save it
+        if save_best:
+            self.target = f"out/{dataset}_{model}"
+            try:
+                os.mkdir(self.target)
+            except FileExistsError:
+                pass
+            with open(f"{self.target}/entities.dict", 'w+') as fd:
+                json.dump(self.entity_idxs, fd, indent=2)
+            with open(f"{self.target}/relations.dict", 'w+') as fd:
+                json.dump(self.relation_idxs, fd, indent=2)
 
     def get_data_idxs(self, data):
         data_idxs = [(self.entity_idxs[data[i][0]], self.relation_idxs[data[i][1]],
@@ -126,6 +139,7 @@ class Experiment:
         logging.info('Hits @1: {0}'.format(np.mean(hits[0])))
         logging.info('Mean rank: {0}'.format(np.mean(ranks)))
         logging.info('Mean reciprocal rank: {0}'.format(np.mean(1. / np.array(ranks))))
+        return np.mean(1. / np.array(ranks))
 
     def train_and_eval(self, model="tucker"):
         logging.info(f"Training the {model} model...")
@@ -176,11 +190,16 @@ class Experiment:
             with torch.no_grad():
                 if not it % eval_step:
                     logging.info(f"Validation at step {it}")
-                    self.evaluate(model, d.valid_data)
+                    mrrs.append(self.evaluate(model, d.valid_data))
                     logging.info(f"Test at step {it}")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
                     logging.info(f"Test Evaluation Time: {time.time() - start_test}")
+                patience = patience - 1 if mrrs[-1] != max(mrrs) else args.patience
+                if save_best and mrrs[-1] != max(mrrs):
+                    torch.save(model, f"{self.target}/best.model")
+                if use_stopper and patience <= 0:
+                    logging.info(f"Early stop since no further improvement is made on the validation set")
 
 
 if __name__ == '__main__':
@@ -222,13 +241,25 @@ if __name__ == '__main__':
                         help='Use a bias in the convolutional layer (ConvE). Default: True')
     parser.add_argument("--eval_step", type=int, default=10, nargs="?",
                         help="Evaluation step.")
+    parser.add_argument("--input", type=str, default="data", help="input path")
+    parser.add_argument("--output", type=str, default="out", help="output path")
+    parser.add_argument("--use_stopper", action='store_true', help='Use an early stopper')
+    parser.add_argument("--save_best", action='store_true', help='Save best model')
+    parser.add_argument("--patience", type=int, default=5, nargs="?", help="Early Stopper")
 
     args = parser.parse_args()
+    # training parameters
     dataset = args.dataset
     model = args.model
     eval_step = args.eval_step
-    log_file = f"out/{dataset}_{model}.log"
-    data_dir = "data/%s/" % dataset
+    # stopper parameters
+    use_stopper = args.use_stopper
+    save_best = args.save_best
+    patience = args.patience
+    mrrs = []
+
+    log_file = f"{args.output}/{dataset}_{model}.log"
+    data_dir = f"{args.input}/%s/" % dataset
     torch.backends.cudnn.deterministic = True
     seed = 20
     np.random.seed(seed)

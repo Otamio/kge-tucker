@@ -79,7 +79,7 @@ def main():
             "hits@1": round(best.test.hits_1, 3),
             "hits@10": round(best.test.hits_10, 3)
         })
-    print(pd.DataFrame(frame))
+    print(pd.DataFrame(frame).sort_values(by=["mrr", "hits@1", "hits@10"], ascending=False))
 
 
 if __name__ == "__main__":
