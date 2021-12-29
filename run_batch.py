@@ -13,7 +13,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     dataset = args.dataset
     gpu = args.gpu
-    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model distmult")
-    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model complex")
-    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model conve")
-    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model tucker")
+    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model distmult", shell=True)
+    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model complex", shell=True)
+    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model conve", shell=True)
+    subprocess.run(f"python run.py --dataset {dataset} --gpu {gpu} --model tucker", shell=True)
