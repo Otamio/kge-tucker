@@ -189,17 +189,19 @@ class Experiment:
             model.eval()
             with torch.no_grad():
                 if not it % eval_step:
+
                     logging.info(f"Validation at step {it}")
                     mrrs.append(self.evaluate(model, d.valid_data))
                     logging.info(f"Test at step {it}")
                     start_test = time.time()
                     self.evaluate(model, d.test_data)
                     logging.info(f"Test Evaluation Time: {time.time() - start_test}")
-                patience = patience - 1 if mrrs[-1] != max(mrrs) else args.patience
-                if save_best and mrrs[-1] != max(mrrs):
-                    torch.save(model, f"{self.target}/best.model")
-                if use_stopper and patience <= 0:
-                    logging.info(f"Early stop since no further improvement is made on the validation set")
+
+                    patience = patience - 1 if mrrs[-1] != max(mrrs) else args.patience
+                    if save_best and mrrs[-1] != max(mrrs):
+                        torch.save(model, f"{self.target}/best.model")
+                    if use_stopper and patience <= 0:
+                        logging.info(f"Early stop since no further improvement is made on the validation set")
 
 
 if __name__ == '__main__':
