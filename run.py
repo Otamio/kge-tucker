@@ -18,7 +18,7 @@ if __name__ == "__main__":
     gpu = args.gpu
     options = args.options
 
-    if model in set(["tucker", "tucker_literal", "tucker_kbln"]):
+    if model in {"tucker", "tucker_literal", "tucker_kbln"}:
         if "fb15k237" in dataset:
             command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                        "--num_iterations 500 --batch_size 128 --lr 0.0005 --dr 1.0 --edim 200 --rdim 200 " \
@@ -27,17 +27,17 @@ if __name__ == "__main__":
             command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                        "--num_iterations 500 --batch_size 128 --lr 0.003 --dr 0.99 --edim 200 --rdim 200 " \
                        "--input_dropout 0.2 --hidden_dropout1 0.2 --hidden_dropout2 0.3 --label_smoothing 0.0"
-    elif model in set(["distmult", "distmult_literal", "distmult_kbln"]):
+    elif model in {"distmult", "distmult_literal", "distmult_kbln"}:
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                   "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
                   "--edim 200 --rdim 200 --input_dropout 0.2 --label_smoothing 0.1"
-    elif model in set(["complex", "complex_literal", "complex_kbln"]):
+    elif model in {"complex", "complex_literal", "complex_kbln"}:
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
                   "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
                   "--edim 400 --rdim 400 --input_dropout 0.2 --label_smoothing 0.1"
-    elif model in set(["conve", "conve_literal", "conve_kbln"]):
+    elif model in {"conve", "conve_literal", "conve_kbln"}:
         command = f"CUDA_VISIBLE_DEVICES={gpu} python main.py --dataset {dataset} --model {model} " \
-                  "--num_iterations 200 --eval_step 5 --batch_size 128 --lr 0.003 --dr 0.995 " \
+                  "--num_iterations 1000 --eval_step 10 --batch_size 128 --lr 0.003 --dr 0.995 " \
                   "--edim 200 --rdim 200 --input_dropout 0.2 --hidden_dropout1 0.3 --feature_map_dropout 0.2 " \
                   "--label_smoothing 0.1"
     else:

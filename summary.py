@@ -1,10 +1,12 @@
 import glob
 from collections import namedtuple
 import argparse
+import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type=str, default='')
 parser.add_argument("--model", type=str, default='')
+parser.add_argument("--mode", type=str, default='')
 Result = namedtuple("Result", "mr mrr hits_1 hits_3 hits_10")
 
 
@@ -31,7 +33,7 @@ def main():
 
     args = parser.parse_args()
     results = {}
-    for fname in glob.iglob(f"out/*{args.dataset}*{args.model}*.log"):
+    for fname in glob.iglob(f"out/*{args.dataset}*{args.mode}*{args.model}*.log"):
         try:
             with open(fname) as fd:
                 epoc = 0
@@ -67,12 +69,17 @@ def main():
             print('Running:', fname, e)
             pass
 
+    frame = []
     for exp, res in sorted(results.items()):
         best = max(res)
-        print(exp, best.epoc,
-              '\t', round(best.test.mrr, 3),
-              '\t', round(best.test.hits_1, 3),
-              '\t', round(best.test.hits_10, 3))
+        frame.append({
+            "experiment": exp,
+            "best_epoc": best.epoc,
+            "mrr": round(best.test.mrr, 3),
+            "hits@1": round(best.test.hits_1, 3),
+            "hits@10": round(best.test.hits_10, 3)
+        })
+    print(pd.DataFrame(frame))
 
 
 if __name__ == "__main__":
