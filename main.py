@@ -67,9 +67,9 @@ class Experiment:
                 os.mkdir(self.target)
             except FileExistsError:
                 pass
-            with open(f"{self.target}/entities.dict", 'w+') as fd:
+            with open(f"{self.target}/{args.model}_entities.dict", 'w+') as fd:
                 json.dump(self.entity_idxs, fd, indent=2)
-            with open(f"{self.target}/relations.dict", 'w+') as fd:
+            with open(f"{self.target}/{args.model}_relations.dict", 'w+') as fd:
                 json.dump(self.relation_idxs, fd, indent=2)
 
     def get_data_idxs(self, data):
