@@ -46,7 +46,7 @@ def compute_result(test):
         sli = test[test['label'] == p]
         res.append({
             "Property": p,
-            "MAE": sli['MAE'].mean()
+            "MAE": round(sli['MAE'].mean(), 3 if 'height' in p else 1)
         })
     print(pd.DataFrame(res))
 
@@ -84,7 +84,8 @@ if __name__ == "__main__":
         if "fb15k237" in args.dataset:
             model = TuckER(d, 200, 200, **{"input_dropout": 0.2,
                                            "hidden_dropout1": 0.4,
-                                           "hidden_dropout2": 0.5})
+                                           "hidden_dropout2": 0.5,
+                                           "device": device})
         else:
             model = TuckER(d, 200, 200, **{"input_dropout": 0.2,
                                            "hidden_dropout1": 0.2,

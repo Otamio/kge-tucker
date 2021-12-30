@@ -189,7 +189,7 @@ class Experiment:
 
             model.eval()
             with torch.no_grad():
-                if it >= args.grace_period and not it % eval_step:
+                if it >= args.warm_up and not it % eval_step:
 
                     logging.info(f"Validation at step {it}")
                     mrrs.append(self.evaluate(model, d.valid_data))
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     parser.add_argument("--output", type=str, default="out", help="output path")
     parser.add_argument("--use_stopper", action='store_true', help='Use an early stopper')
     parser.add_argument("--save_best", action='store_true', help='Save best model')
-    parser.add_argument("--grace_period", type=int, default=30, nargs="?", help="Grace Period before evaluation")
+    parser.add_argument("--warm_up", type=int, default=30, nargs="?", help="Grace Period before evaluation")
     parser.add_argument("--patience", type=int, default=5, nargs="?", help="Early Stopper")
 
     args = parser.parse_args()
