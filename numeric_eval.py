@@ -67,7 +67,7 @@ if __name__ == "__main__":
         print("Unsupported Model", args.model)
         exit()
 
-    model.load_state_dict(torch.load(f"{target}/{model}.model"))
+    model.load_state_dict(torch.load(f"{target}/{args.model}.model"))
 
     if 'QOC' in args.dataset or 'FOC' in args.dataset:
         runs = ["_left", "_right"]
