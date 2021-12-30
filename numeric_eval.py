@@ -30,10 +30,10 @@ def populate_estimate(model, test, suffix):
                 lambda x: row[1] in x,
                 list(map(lambda x: idx2ent[x], [x.item() for x in torch.argsort(res[i], descending=True)[:50]]))
             ))
-            test[suffix][i] = medians[candidates[0]]
+            test.loc[suffix, i] = medians[candidates[0]]
         except KeyError:
             print(i, row[0], row[1])
-            test[suffix][i] = medians[row[1]]
+            test.loc[suffix, i] = medians[row[1]]
 
 
 def compute_result(test):
