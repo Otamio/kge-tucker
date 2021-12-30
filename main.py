@@ -62,7 +62,7 @@ class Experiment:
         logging.getLogger('').addHandler(console)
         # If need checkpoint, save it
         if save_best:
-            self.target = f"out/{dataset}_{model}"
+            self.target = f"{args.output}/{dataset}_{model}"
             try:
                 os.mkdir(self.target)
             except FileExistsError:
