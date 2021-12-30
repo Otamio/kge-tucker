@@ -88,7 +88,8 @@ if __name__ == "__main__":
         else:
             model = TuckER(d, 200, 200, **{"input_dropout": 0.2,
                                            "hidden_dropout1": 0.2,
-                                           "hidden_dropout2": 0.3})
+                                           "hidden_dropout2": 0.3,
+                                           "device": device})
     else:
         print("Unsupported Model", args.model)
         exit()

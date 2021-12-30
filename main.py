@@ -46,7 +46,8 @@ class Experiment:
         self.kwargs = {"input_dropout": input_dropout, "hidden_dropout1": hidden_dropout1,
                        "hidden_dropout2": hidden_dropout2, "feature_map_dropout": feature_map_dropout,
                        "hidden_size": hidden_size, "use_bias": use_bias, "embedding_shape1": embedding_shape1,
-                       "dataset": dataset, "ent2idx": self.entity_idxs, "rel2idx": self.relation_idxs}
+                       "dataset": dataset, "ent2idx": self.entity_idxs, "rel2idx": self.relation_idxs,
+                       "device": "cuda" if torch.cuda.is_available() else "cpu"}
         # Set up log file
         logging.basicConfig(
             format='%(asctime)s %(levelname)-8s %(message)s',
