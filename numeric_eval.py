@@ -31,7 +31,7 @@ def populate_estimate(model, test, suffix):
                 list(map(lambda x: idx2ent[x], [x.item() for x in torch.argsort(res[i], descending=True)[:50]]))
             ))
             test.loc[suffix, i] = medians[candidates[0]]
-        except KeyError:
+        except IndexError:
             print(i, row[0], row[1])
             test.loc[suffix, i] = medians[row[1]]
 
