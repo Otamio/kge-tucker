@@ -240,7 +240,7 @@ if __name__ == '__main__':
                              'The second dimension is infered. Default: 20 (ConvE)')
     parser.add_argument("--label_smoothing", type=float, default=0.1, nargs="?",
                         help="Amount of label smoothing.")
-    parser.add_argument('--use-bias', action='store_true',
+    parser.add_argument('--use_bias', action='store_true',
                         help='Use a bias in the convolutional layer (ConvE). Default: True')
     parser.add_argument("--eval_step", type=int, default=10, nargs="?",
                         help="Evaluation step.")
