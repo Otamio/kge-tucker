@@ -60,7 +60,7 @@ if __name__ == "__main__":
     with open(f'{target}/medians.dict') as fd:
         medians = json.load(fd)
 
-    d = Data(data_dir=target, reverse=True)
+    d = Data(data_dir=f"{target}/", reverse=True)
     if args.model == "distmult":
         model = DistMult(d, 200, 200, **{"input_dropout": 0.3})
     else:
