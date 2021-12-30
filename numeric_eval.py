@@ -54,6 +54,7 @@ def compute_result(test):
 if __name__ == "__main__":
 
     torch.backends.cudnn.deterministic = True
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -79,6 +80,15 @@ if __name__ == "__main__":
                                       "use_bias": True,
                                       "hidden_size": 9728,
                                       "embedding_shape1": 20})
+    elif args.model == "tucker":
+        if "fb15k237" in args.dataset:
+            model = TuckER(d, 200, 200, **{"input_dropout": 0.2,
+                                           "hidden_dropout1": 0.4,
+                                           "hidden_dropout2": 0.5})
+        else:
+            model = TuckER(d, 200, 200, **{"input_dropout": 0.2,
+                                           "hidden_dropout1": 0.2,
+                                           "hidden_dropout2": 0.3})
     else:
         print("Unsupported Model", args.model)
         exit()
