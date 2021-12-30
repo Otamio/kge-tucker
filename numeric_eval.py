@@ -24,30 +24,37 @@ def populate_estimate(model, test, suffix):
         rel.append(rel2idx["Interval-" + row[1] + suffix])
     res = model(torch.LongTensor(ent), torch.LongTensor(rel))
 
+    ind = test.columns.tolist().index(suffix)
+    skips = 0
     for i, row in tqdm(test.iterrows()):
         try:
             candidates = list(filter(
                 lambda x: row[1] in x,
                 list(map(lambda x: idx2ent[x], [x.item() for x in torch.argsort(res[i], descending=True)[:50]]))
             ))
-            test.loc[suffix, i] = medians[candidates[0]]
+            test.iloc[i, ind] = medians[candidates[0]]
         except IndexError:
-            print(i, row[0], row[1])
-            test.loc[suffix, i] = medians[row[1]]
+            skips += 1
+            test.iloc[i, ind] = medians[row[1]]
+    print('Skipped', skips)
 
 
 def compute_result(test):
     res = []
-    for p in test[1].unique():
-        sli = test[test[1] == p]
+    test['MAE'] = abs(test['estimate'] - test['value'])
+    for p in test['label'].unique():
+        sli = test[test['label'] == p]
         res.append({
             "Property": p,
-            "MAE": sli.iloc[:, -1].mean()
+            "MAE": sli['MAE'].mean()
         })
     print(pd.DataFrame(res))
 
 
 if __name__ == "__main__":
+
+    torch.backends.cudnn.deterministic = True
+
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     target = f'numeric/{args.dataset}'
@@ -62,12 +69,26 @@ if __name__ == "__main__":
 
     d = Data(data_dir=f"{target}/", reverse=True)
     if args.model == "distmult":
-        model = DistMult(d, 200, 200, **{"input_dropout": 0.3})
+        model = DistMult(d, 200, 200, **{"input_dropout": 0.2})
+    elif args.model == "complex":
+        model = ComplEx(d, 400, 400, **{"input_dropout": 0.2})
+    elif args.model == "conve":
+        model = ConvE(d, 200, 200, **{"input_dropout": 0.2,
+                                      "hidden_dropout1": 0.3,
+                                      "feature_map_dropout": 0.2,
+                                      "use_bias": False,
+                                      "hidden_size": 9728,
+                                      "embedding_shape1": 20})
     else:
         print("Unsupported Model", args.model)
         exit()
 
-    model.load_state_dict(torch.load(f"{target}/{args.model}.model"))
+    if torch.cuda.is_available():
+        model.load_state_dict(torch.load(f"{target}/{args.model}.model"))
+    else:
+        model.load_state_dict(torch.load(f"{target}/{args.model}.model", map_location='cpu'))
+
+    model.eval()
 
     if 'QOC' in args.dataset or 'FOC' in args.dataset:
         runs = ["_left", "_right"]
