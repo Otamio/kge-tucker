@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type=str, default='')
 parser.add_argument("--model", type=str, default='')
 parser.add_argument("--mode", type=str, default='')
+parser.add_argument("--path", type=str, default='out')
 Result = namedtuple("Result", "mr mrr hits_1 hits_3 hits_10")
 
 
@@ -33,7 +34,7 @@ def main():
 
     args = parser.parse_args()
     results = {}
-    for fname in glob.iglob(f"out/*{args.dataset}*{args.mode}*{args.model}*.log"):
+    for fname in glob.iglob(f"{args.path}/*{args.dataset}*{args.mode}*{args.model}*.log"):
         try:
             with open(fname) as fd:
                 epoc = 0
