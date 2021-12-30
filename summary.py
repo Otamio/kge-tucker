@@ -61,10 +61,10 @@ def main():
                     elif line.startswith("Mean reciprocal rank"):
                         current["mrr"] = float(line.split(':')[1])
                 result.append(EpocResult(epoc, convert_result(valid), convert_result(test)))
-            if epoc % 100 == 0:
-                results[fname.split('/')[1].split('.')[0].strip()] = result
-            else:
-                print('Running:', fname, epoc)
+            # if epoc % 100 == 0:
+            results[fname.split('/')[1].split('.')[0].strip()] = result
+            # else:
+                #print('Running:', fname, epoc)
         except KeyError as e:
             print('Running:', fname, e)
             pass

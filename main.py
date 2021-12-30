@@ -202,6 +202,7 @@ class Experiment:
                         torch.save(model, f"{self.target}/best.model")
                     if use_stopper and patience <= 0:
                         logging.info(f"Early stop since no further improvement is made on the validation set")
+                        break
 
 
 if __name__ == '__main__':
