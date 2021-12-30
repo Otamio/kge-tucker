@@ -19,6 +19,7 @@ def load_num_lit(ent2idx, dataset, wrap=True):
         return torch.autograd.Variable(torch.from_numpy(numerical_literals))
     return numerical_literals
 
+
 def load_num_lit_kbln(ent2idx, rel2idx, dataset):
     def load_data(file_path, ent2idx, rel2idx):
         df = pd.read_csv(file_path, sep='\t', header=None)

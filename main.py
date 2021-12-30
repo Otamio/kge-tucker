@@ -199,7 +199,7 @@ class Experiment:
 
                     patience = patience - 1 if mrrs[-1] != max(mrrs) else args.patience
                     if save_best and mrrs[-1] == max(mrrs):
-                        torch.save(model, f"{self.target}/{args.model}.model")
+                        torch.save(model.state_dict(), f"{self.target}/{args.model}.model")
                     if use_stopper and patience <= 0:
                         logging.info(f"Early stop since no further improvement is made on the validation set")
                         break
