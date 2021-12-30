@@ -76,7 +76,7 @@ if __name__ == "__main__":
         model = ConvE(d, 200, 200, **{"input_dropout": 0.2,
                                       "hidden_dropout1": 0.3,
                                       "feature_map_dropout": 0.2,
-                                      "use_bias": False,
+                                      "use_bias": True,
                                       "hidden_size": 9728,
                                       "embedding_shape1": 20})
     else:

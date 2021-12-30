@@ -248,7 +248,7 @@ if __name__ == '__main__':
     parser.add_argument("--output", type=str, default="out", help="output path")
     parser.add_argument("--use_stopper", action='store_true', help='Use an early stopper')
     parser.add_argument("--save_best", action='store_true', help='Save best model')
-    parser.add_argument("--grace_period", type=int, default=50, nargs="?", help="Grace Period before evaluation")
+    parser.add_argument("--grace_period", type=int, default=30, nargs="?", help="Grace Period before evaluation")
     parser.add_argument("--patience", type=int, default=5, nargs="?", help="Early Stopper")
 
     args = parser.parse_args()
